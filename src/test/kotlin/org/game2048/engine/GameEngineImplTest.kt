@@ -36,7 +36,6 @@ class GameEngineImplTest {
     }
 
     @Test
-    @Ignore
     fun `test horizontal merge`() {
         val cells = arrayOf(
             arrayOf(2, 2, 0, 0),
@@ -49,26 +48,29 @@ class GameEngineImplTest {
         val state = engine.makeMove(Move.LEFT)
         val newCells = state.board.cells
 
-        // First row: 2,2,0,0 -> 4,0,0,x
+        // First row: 2,2,0,0 -> 4,0,0,x (where x is a new random tile)
         assertEquals(4, newCells[0][0])
-        assertEquals(0, newCells[0][1])
-
+        
         // Second row: 2,0,2,0 -> 4,0,0,x
         assertEquals(4, newCells[1][0])
-        assertEquals(0, newCells[1][1])
-
+        
         // Third row: 4,0,4,0 -> 8,0,0,x
         assertEquals(8, newCells[2][0])
-        assertEquals(0, newCells[2][1])
-
+        
         // Fourth row: 2,2,2,2 -> 4,4,0,x
         assertEquals(4, newCells[3][0])
         assertEquals(4, newCells[3][1])
-        assertEquals(0, newCells[3][2])
+        
+        // Check that exactly one new tile was added
+        val nonZeroCount = newCells.flatten().count { it != 0 }
+        assertEquals(6, nonZeroCount) // 4 merged tiles + 1 unmerged tile + 1 new random tile
+        
+        // Check that the new tile is either 2 or 4
+        val allValues = newCells.flatten().toSet()
+        assertTrue(allValues.all { it == 0 || it == 2 || it == 4 || it == 8 })
     }
 
     @Test
-    @Ignore
     fun `test vertical merge`() {
         val cells = arrayOf(
             arrayOf(2, 0, 4, 2),
@@ -81,14 +83,23 @@ class GameEngineImplTest {
         val state = engine.makeMove(Move.UP)
         val newCells = state.board.cells
 
-        // First column: 2,2,0,0 -> 4,0,0,x
+        // First column: 2,2,0,0 -> 4,0,0,x (where x is a new random tile)
         assertEquals(4, newCells[0][0])
-        assertEquals(0, newCells[1][0])
-
+        
+        // Third column: 4,0,4,0 -> 8,0,0,x
+        assertEquals(8, newCells[0][2])
+        
         // Fourth column: 2,2,2,2 -> 4,4,0,x
         assertEquals(4, newCells[0][3])
         assertEquals(4, newCells[1][3])
-        assertEquals(0, newCells[2][3])
+        
+        // Check that exactly one new tile was added
+        val nonZeroCount = newCells.flatten().count { it != 0 }
+        assertEquals(5, nonZeroCount) // 4 merged tiles + 1 new random tile
+        
+        // Check that the new tile is either 2 or 4
+        val allValues = newCells.flatten().toSet()
+        assertTrue(allValues.all { it == 0 || it == 2 || it == 4 || it == 8 })
     }
 
     @Test
@@ -164,9 +175,17 @@ class GameEngineImplTest {
 
     @Test
     fun `test undo functionality`() {
-        val state = engine.newGame()
-        val initialBoard = state.board
-
+        // Initialize a board with a known state where a move will definitely change the board
+        val cells = arrayOf(
+            arrayOf(2, 2, 0, 0),
+            arrayOf(0, 0, 0, 0),
+            arrayOf(0, 0, 0, 0),
+            arrayOf(0, 0, 0, 0)
+        )
+        initializeBoard(cells)
+        val initialBoard = engine.currentState.board
+        
+        // Make a move that will definitely change the board
         engine.makeMove(Move.LEFT)
         val undoState = engine.undo()
 
